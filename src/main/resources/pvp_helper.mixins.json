@@ -1,0 +1,9 @@
+{
+	"required": true,
+	"package": "com.k1ngv3nom.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"mixins": [],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}
