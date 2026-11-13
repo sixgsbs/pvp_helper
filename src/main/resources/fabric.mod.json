@@ -1,0 +1,33 @@
+{
+	"schemaVersion": 1,
+	"id": "pvp_helper",
+	"version": "1.0.0",
+	"name": "Paper Helper",
+	"description": "Armor HUD that shows how many XP bottles you need to repair your armor.",
+	"authors": [
+		"K1ngV3nom"
+	],
+	"license": "CC0-1.0",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.k1ngv3nom.Pvp_helper"
+		],
+		"client": [
+			"com.k1ngv3nom.client.Pvp_helperClient"
+		]
+	},
+	"mixins": [
+		"pvp_helper.mixins.json",
+		{
+			"config": "pvp_helper.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.20.1",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}
