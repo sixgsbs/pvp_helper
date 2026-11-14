@@ -12,6 +12,7 @@ import java.util.Properties;
 public class HudConfig {
 	public static int x = 10;
 	public static int y = 10;
+	public static boolean horizontal = false;
 
 	private static Path file() {
 		return FabricLoader.getInstance().getConfigDir().resolve("paper_helper.properties");
@@ -25,6 +26,7 @@ public class HudConfig {
 			props.load(reader);
 			x = Integer.parseInt(props.getProperty("x", "10"));
 			y = Integer.parseInt(props.getProperty("y", "10"));
+			horizontal = Boolean.parseBoolean(props.getProperty("horizontal", "false"));
 		} catch (IOException | NumberFormatException ignored) {
 		}
 	}
@@ -33,6 +35,7 @@ public class HudConfig {
 		Properties props = new Properties();
 		props.setProperty("x", String.valueOf(x));
 		props.setProperty("y", String.valueOf(y));
+		props.setProperty("horizontal", String.valueOf(horizontal));
 		try (Writer writer = Files.newBufferedWriter(file())) {
 			props.store(writer, "Paper Helper HUD position");
 		} catch (IOException ignored) {
