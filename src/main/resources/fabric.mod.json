@@ -14,7 +14,8 @@
 			"com.k1ngv3nom.Pvp_helper"
 		],
 		"client": [
-			"com.k1ngv3nom.client.Pvp_helperClient"
+			"com.k1ngv3nom.client.Pvp_helperClient",
+			"com.k1ngv3nom.client.MenuKey"
 		]
 	},
 	"mixins": [
