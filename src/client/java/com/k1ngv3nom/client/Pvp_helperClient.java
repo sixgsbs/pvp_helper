@@ -28,12 +28,22 @@ public class Pvp_helperClient implements ClientModInitializer {
 		EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET
 	};
 
+	private static float scale() {
+		return HudConfig.scale / 100f;
+	}
+
+	private static int rowCount() {
+		return 4 + (HudConfig.showTotems ? 1 : 0);
+	}
+
 	public static int boxWidth() {
-		return HudConfig.horizontal ? CELL_W * 5 : 120;
+		int base = HudConfig.horizontal ? CELL_W * rowCount() : 120;
+		return Math.round(base * scale());
 	}
 
 	public static int boxHeight() {
-		return HudConfig.horizontal ? 46 : 90;
+		int base = HudConfig.horizontal ? 46 : rowCount() * 18;
+		return Math.round(base * scale());
 	}
 
 	@Override
@@ -58,9 +68,20 @@ public class Pvp_helperClient implements ClientModInitializer {
 		Minecraft mc = Minecraft.getInstance();
 		if (mc.player == null) return;
 
+		graphics.pose().pushMatrix();
+		graphics.pose().translate((float) x, (float) y);
+		graphics.pose().scale(scale(), scale());
+		drawContents(graphics, mc, preview);
+		graphics.pose().popMatrix();
+	}
+
+	private static void drawContents(GuiGraphics graphics, Minecraft mc, boolean preview) {
 		boolean horizontal = HudConfig.horizontal;
+		boolean showPercent = HudConfig.showPercent;
 		boolean holdingBottle = mc.player.getMainHandItem().is(Items.EXPERIENCE_BOTTLE)
 			|| mc.player.getOffhandItem().is(Items.EXPERIENCE_BOTTLE);
+		boolean bottlesOn = HudConfig.showBottles && (holdingBottle || preview);
+		boolean blinkOn = (System.currentTimeMillis() / 350) % 2 == 0;
 
 		ItemStack bottleIcon = new ItemStack(Items.EXPERIENCE_BOTTLE);
 
@@ -69,43 +90,44 @@ public class Pvp_helperClient implements ClientModInitializer {
 			ItemStack stack = mc.player.getItemBySlot(slot);
 			if (stack.isEmpty()) continue;
 
-			int px = horizontal ? x + index * CELL_W : x;
-			int py = horizontal ? y : y + index * 18;
+			int px = horizontal ? index * CELL_W : 0;
+			int py = horizontal ? 0 : index * 18;
 
-			int iconX = horizontal ? px + 4 : px;
-			int textX = horizontal ? px : px + 20;
-			int textY = horizontal ? py + 18 : py + 4;
-			int bottleX = horizontal ? px : px + 50;
-			int bottleY = horizontal ? py + 28 : py;
-			int numX = bottleX + (horizontal ? 18 : 20);
-
-			graphics.renderItem(stack, iconX, py);
+			graphics.renderItem(stack, horizontal ? px + 4 : px, py);
 
 			if (stack.isDamageableItem()) {
 				int max = stack.getMaxDamage();
 				int damage = stack.getDamageValue();
 				int percent = (max - damage) * 100 / max;
 
-				int color = percent > 50 ? 0xFF55FF55 : percent > 25 ? 0xFFFFFF55 : 0xFFFF5555;
-				graphics.drawString(mc.font, percent + "%", textX, textY, color);
+				if (showPercent) {
+					int color = percent > 50 ? 0xFF55FF55 : percent > 25 ? 0xFFFFFF55 : 0xFFFF5555;
+					if (HudConfig.lowWarning && percent <= 20 && blinkOn) color = 0xFFFFFFFF;
+					graphics.drawString(mc.font, percent + "%",
+						horizontal ? px : px + 20, horizontal ? py + 18 : py + 4, color);
+				}
 
-				if ((holdingBottle || preview) && damage > 0 && hasMending(stack)) {
+				if (bottlesOn && damage > 0 && hasMending(stack)) {
 					int bottles = (int) Math.ceil(damage / 2.0 / AVG_XP_PER_BOTTLE);
+					int bottleX = horizontal ? px : px + (showPercent ? 50 : 20);
+					int bottleY = horizontal ? py + (showPercent ? 28 : 18) : py;
 					graphics.renderItem(bottleIcon, bottleX, bottleY);
-					graphics.drawString(mc.font, String.valueOf(bottles), numX, bottleY + 4, 0xFF55FFFF);
+					graphics.drawString(mc.font, String.valueOf(bottles),
+						bottleX + (horizontal ? 18 : 20), bottleY + 4, 0xFF55FFFF);
 				}
 			}
 			index++;
 		}
 
-		// Totem counter, shown after the armor pieces.
-		int totems = countTotems(mc);
-		int tx = horizontal ? x + index * CELL_W : x;
-		int ty = horizontal ? y : y + index * 18;
-		graphics.renderItem(new ItemStack(Items.TOTEM_OF_UNDYING), horizontal ? tx + 4 : tx, ty);
-		int totemColor = totems > 1 ? 0xFFFFFFFF : totems == 1 ? 0xFFFFFF55 : 0xFFFF5555;
-		graphics.drawString(mc.font, String.valueOf(totems), horizontal ? tx + 4 : tx + 20,
-			horizontal ? ty + 18 : ty + 4, totemColor);
+		if (HudConfig.showTotems) {
+			int totems = countTotems(mc);
+			int tx = horizontal ? index * CELL_W : 0;
+			int ty = horizontal ? 0 : index * 18;
+			graphics.renderItem(new ItemStack(Items.TOTEM_OF_UNDYING), horizontal ? tx + 4 : tx, ty);
+			int totemColor = totems > 1 ? 0xFFFFFFFF : totems == 1 ? 0xFFFFFF55 : 0xFFFF5555;
+			graphics.drawString(mc.font, String.valueOf(totems),
+				horizontal ? tx + 4 : tx + 20, horizontal ? ty + 18 : ty + 4, totemColor);
+		}
 	}
 
 	private static int countTotems(Minecraft mc) {
