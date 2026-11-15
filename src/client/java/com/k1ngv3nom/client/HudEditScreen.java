@@ -1,5 +1,6 @@
 package com.k1ngv3nom.client;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -7,23 +8,25 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 public class HudEditScreen extends Screen {
-	private static final int STEP = 4;
-	private static final int PANEL_W = 220;
-	private static final int PANEL_H = 98;
+	private static final int PANEL_W = 196;
+	private static final int PANEL_H = 176;
+	private static final int ROW = 23;
 
+	private final long openedAt = System.currentTimeMillis();
 	private boolean wasPressed = false;
 	private boolean moving = false;
+	private Button sizeButton;
 
 	public HudEditScreen() {
 		super(Component.literal("Paper Helper"));
 	}
 
 	private int panelX() {
-		return width / 2 - PANEL_W / 2;
+		return width - PANEL_W - 10;
 	}
 
 	private int panelY() {
-		return height - PANEL_H - 8;
+		return Math.max(8, height / 2 - PANEL_H / 2);
 	}
 
 	private boolean overPanel(int mouseX, int mouseY) {
@@ -31,36 +34,86 @@ public class HudEditScreen extends Screen {
 			&& mouseY >= panelY() - 2 && mouseY <= panelY() + PANEL_H + 2;
 	}
 
-	private Component layoutLabel() {
+	private static Component toggleLabel(String name, boolean on) {
+		return Component.literal(name + ": ")
+			.append(Component.literal(on ? "ON" : "OFF").withStyle(on ? ChatFormatting.GREEN : ChatFormatting.RED));
+	}
+
+	private static Component layoutLabel() {
 		return Component.literal("Layout: " + (HudConfig.horizontal ? "Horizontal" : "Vertical"));
+	}
+
+	private static Component themeLabel() {
+		return Component.literal("Theme: " + HudConfig.THEME_NAMES[HudConfig.theme]);
+	}
+
+	private static Component sizeLabel() {
+		return Component.literal("Size: " + HudConfig.scale + "%");
 	}
 
 	@Override
 	protected void init() {
 		int px = panelX();
 		int py = panelY();
+		int top = py + 28;
 
 		addRenderableWidget(Button.builder(layoutLabel(), b -> {
 			HudConfig.horizontal = !HudConfig.horizontal;
 			b.setMessage(layoutLabel());
 			nudge(0, 0);
-		}).bounds(px + 10, py + 26, 200, 20).build());
+		}).bounds(px + 10, top, 176, 20).build());
 
-		addRenderableWidget(Button.builder(Component.literal("Left"), b -> nudge(-STEP, 0))
-			.bounds(px + 10, py + 50, 47, 20).build());
-		addRenderableWidget(Button.builder(Component.literal("Right"), b -> nudge(STEP, 0))
-			.bounds(px + 61, py + 50, 47, 20).build());
-		addRenderableWidget(Button.builder(Component.literal("Up"), b -> nudge(0, -STEP))
-			.bounds(px + 112, py + 50, 47, 20).build());
-		addRenderableWidget(Button.builder(Component.literal("Down"), b -> nudge(0, STEP))
-			.bounds(px + 163, py + 50, 47, 20).build());
+		addRenderableWidget(Button.builder(Component.literal("-"), b -> changeScale(-10))
+			.bounds(px + 10, top + ROW, 40, 20).build());
+		sizeButton = addRenderableWidget(Button.builder(sizeLabel(), b -> {
+			HudConfig.scale = 100;
+			refreshSize();
+		}).bounds(px + 54, top + ROW, 88, 20).build());
+		addRenderableWidget(Button.builder(Component.literal("+"), b -> changeScale(10))
+			.bounds(px + 146, top + ROW, 40, 20).build());
+
+		addRenderableWidget(Button.builder(themeLabel(), b -> {
+			HudConfig.theme = (HudConfig.theme + 1) % HudConfig.THEME_COLORS.length;
+			b.setMessage(themeLabel());
+		}).bounds(px + 10, top + ROW * 2, 176, 20).build());
+
+		addRenderableWidget(Button.builder(toggleLabel("Percent", HudConfig.showPercent), b -> {
+			HudConfig.showPercent = !HudConfig.showPercent;
+			b.setMessage(toggleLabel("Percent", HudConfig.showPercent));
+		}).bounds(px + 10, top + ROW * 3, 86, 20).build());
+		addRenderableWidget(Button.builder(toggleLabel("Totems", HudConfig.showTotems), b -> {
+			HudConfig.showTotems = !HudConfig.showTotems;
+			b.setMessage(toggleLabel("Totems", HudConfig.showTotems));
+			nudge(0, 0);
+		}).bounds(px + 100, top + ROW * 3, 86, 20).build());
+
+		addRenderableWidget(Button.builder(toggleLabel("Bottles", HudConfig.showBottles), b -> {
+			HudConfig.showBottles = !HudConfig.showBottles;
+			b.setMessage(toggleLabel("Bottles", HudConfig.showBottles));
+		}).bounds(px + 10, top + ROW * 4, 86, 20).build());
+		addRenderableWidget(Button.builder(toggleLabel("Warning", HudConfig.lowWarning), b -> {
+			HudConfig.lowWarning = !HudConfig.lowWarning;
+			b.setMessage(toggleLabel("Warning", HudConfig.lowWarning));
+		}).bounds(px + 100, top + ROW * 4, 86, 20).build());
 
 		addRenderableWidget(Button.builder(Component.literal("Reset"), b -> {
 			HudConfig.x = 10;
 			HudConfig.y = 10;
-		}).bounds(px + 10, py + 74, 98, 20).build());
+			HudConfig.scale = 100;
+			refreshSize();
+		}).bounds(px + 10, top + ROW * 5, 86, 20).build());
 		addRenderableWidget(Button.builder(Component.literal("Done"), b -> onClose())
-			.bounds(px + 112, py + 74, 98, 20).build());
+			.bounds(px + 100, top + ROW * 5, 86, 20).build());
+	}
+
+	private void changeScale(int delta) {
+		HudConfig.scale = Math.max(50, Math.min(200, HudConfig.scale + delta));
+		refreshSize();
+	}
+
+	private void refreshSize() {
+		sizeButton.setMessage(sizeLabel());
+		nudge(0, 0);
 	}
 
 	private int clampX(int value) {
@@ -95,27 +148,38 @@ public class HudEditScreen extends Screen {
 
 	@Override
 	public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-		graphics.fill(0, 0, width, height, 0x90000000);
+		int accent = HudConfig.accent();
 
-		String hint = "Tap anywhere or drag to move your armor";
+		float fade = Math.min(1f, (System.currentTimeMillis() - openedAt) / 220f);
+		graphics.fill(0, 0, width, height, ((int) (0xA0 * fade)) << 24);
+
+		String hint = "Click or drag anywhere to move your HUD";
 		int tw = font.width(hint);
-		graphics.fill(width / 2 - tw / 2 - 8, 10, width / 2 + tw / 2 + 8, 28, 0xB0000000);
+		int hx1 = width / 2 - tw / 2 - 10;
+		int hx2 = width / 2 + tw / 2 + 10;
+		graphics.fill(hx1 - 1, 9, hx2 + 1, 29, accent);
+		graphics.fill(hx1, 10, hx2, 28, 0xF0121218);
 		graphics.drawCenteredString(font, hint, width / 2, 15, 0xFFFFFFFF);
 
-		int x = HudConfig.x;
-		int y = HudConfig.y;
+		int hx = HudConfig.x;
+		int hy = HudConfig.y;
 		int w = Pvp_helperClient.boxWidth();
 		int h = Pvp_helperClient.boxHeight();
-		graphics.fill(x - 4, y - 4, x + w + 2, y + h + 2, 0xFF8A6BFF);
-		graphics.fill(x - 3, y - 3, x + w + 1, y + h + 1, 0xF0141418);
-		Pvp_helperClient.drawArmor(graphics, x, y, true);
+		graphics.fill(hx - 5, hy - 5, hx + w + 3, hy + h + 3, accent);
+		graphics.fill(hx - 4, hy - 4, hx + w + 2, hy + h + 2, 0xF0121218);
+		Pvp_helperClient.drawArmor(graphics, hx, hy, true);
+		graphics.drawString(font, hx + ", " + hy, hx, hy + h + 7, 0xFF9A9AA8);
 
 		int px = panelX();
 		int py = panelY();
-		graphics.fill(px - 1, py - 1, px + PANEL_W + 1, py + PANEL_H + 1, 0xFF3A3A4A);
-		graphics.fill(px, py, px + PANEL_W, py + PANEL_H, 0xF0141418);
-		graphics.drawCenteredString(font, "Paper Helper", width / 2, py + 7, 0xFFFFFFFF);
-		graphics.fill(px + 10, py + 19, px + PANEL_W - 10, py + 20, 0xFF8A6BFF);
+		graphics.fill(px + 2, py + 3, px + PANEL_W + 2, py + PANEL_H + 3, 0x70000000);
+		graphics.fill(px - 1, py - 1, px + PANEL_W + 1, py + PANEL_H + 1, accent);
+		graphics.fill(px, py, px + PANEL_W, py + PANEL_H, 0xF0121218);
+		graphics.fillGradient(px, py, px + PANEL_W, py + 19, (accent & 0x00FFFFFF) | 0x55000000, 0x00000000);
+		graphics.drawCenteredString(font,
+			Component.literal("PAPER HELPER").withStyle(ChatFormatting.BOLD),
+			px + PANEL_W / 2, py + 6, 0xFFFFFFFF);
+		graphics.fill(px + 10, py + 19, px + PANEL_W - 10, py + 20, accent);
 	}
 
 	@Override
