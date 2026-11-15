@@ -11,6 +11,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.Enchantment;
@@ -28,17 +29,16 @@ public class Pvp_helperClient implements ClientModInitializer {
 	};
 
 	public static int boxWidth() {
-		return HudConfig.horizontal ? CELL_W * 4 : 120;
+		return HudConfig.horizontal ? CELL_W * 5 : 120;
 	}
 
 	public static int boxHeight() {
-		return HudConfig.horizontal ? 46 : 72;
+		return HudConfig.horizontal ? 46 : 90;
 	}
 
 	@Override
 	public void onInitializeClient() {
 		HudConfig.load();
-		FpsBoost.register();
 
 		HudElementRegistry.addLast(Pvp_helper.id("armor_hud"), (graphics, deltaTracker) -> {
 			Minecraft mc = Minecraft.getInstance();
@@ -97,6 +97,25 @@ public class Pvp_helperClient implements ClientModInitializer {
 			}
 			index++;
 		}
+
+		// Totem counter, shown after the armor pieces.
+		int totems = countTotems(mc);
+		int tx = horizontal ? x + index * CELL_W : x;
+		int ty = horizontal ? y : y + index * 18;
+		graphics.renderItem(new ItemStack(Items.TOTEM_OF_UNDYING), horizontal ? tx + 4 : tx, ty);
+		int totemColor = totems > 1 ? 0xFFFFFFFF : totems == 1 ? 0xFFFFFF55 : 0xFFFF5555;
+		graphics.drawString(mc.font, String.valueOf(totems), horizontal ? tx + 4 : tx + 20,
+			horizontal ? ty + 18 : ty + 4, totemColor);
+	}
+
+	private static int countTotems(Minecraft mc) {
+		int total = 0;
+		Inventory inventory = mc.player.getInventory();
+		for (int i = 0; i < inventory.getContainerSize(); i++) {
+			ItemStack s = inventory.getItem(i);
+			if (s.is(Items.TOTEM_OF_UNDYING)) total += s.getCount();
+		}
+		return total;
 	}
 
 	private static boolean hasMending(ItemStack stack) {
